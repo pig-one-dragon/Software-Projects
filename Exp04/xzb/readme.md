@@ -27,8 +27,7 @@
 ![](http://ww1.sinaimg.cn/large/005Jzifvly1fxufwionc4j30f20buq6y.jpg)
 
 锐化：
-
-![1543885753840](C:\Users\XuZhiBin\AppData\Roaming\Typora\typora-user-images\1543885753840.png)
+![](http://ww1.sinaimg.cn/large/005Jzifvly1fysbv1tdubj309808i798.jpg)
 
 浮雕：
 
