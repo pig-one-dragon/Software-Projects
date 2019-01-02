@@ -18,8 +18,6 @@
 
 运动模糊：
 
-
-
 ![](http://ww1.sinaimg.cn/large/005Jzifvly1fxufvufppbj30c60a4q5t.jpg)
 
 边缘检测：
@@ -27,6 +25,7 @@
 ![](http://ww1.sinaimg.cn/large/005Jzifvly1fxufwionc4j30f20buq6y.jpg)
 
 锐化：
+
 ![](http://ww1.sinaimg.cn/large/005Jzifvly1fysbv1tdubj309808i798.jpg)
 
 浮雕：
