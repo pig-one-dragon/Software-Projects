@@ -1,0 +1,181 @@
+#include "pch.h"
+#include <iostream>
+using namespace std;
+#include "./gdal/gdal_priv.h"
+#pragma comment(lib,"gdal_i.lib")
+
+/*
+		代码的思路是先生成一个黑色背景的superman.jpg，然后将space.jpg的像素加到
+	黑色背景的superman上，如果superman图某些点的像素值为全0（黑色部分），就使用
+	space的像素，否则还使用superman的像素。
+*/
+
+int main()
+{
+	/*
+		从此处到89行是将superman.jpg的绿色背景变成黑色，并且将
+	生成一个BlackBackground.jpg图片
+	*/
+	
+	//输入图像
+	GDALDataset* poSrcDS;
+	//输出图像
+	GDALDataset* poDstDS;
+	//图像的高度和宽度
+	int imgXlen, imgYlen;
+	//输入图像路径
+	const char* srcPath = "superman.jpg";
+	//输出图像路径
+	const char* dstPath = "BlackBackground.jpg";
+	//图像内存存储
+	GByte *buffTmp1, *buffTmp2, *buffTmp3;
+	//bandNum是通道数
+	int i, j, bandNum;
+
+	//注册驱动
+	GDALAllRegister();
+	//打开图像，poSrcDS初始化
+	poSrcDS = (GDALDataset*)GDALOpenShared(srcPath, GA_ReadOnly);
+
+	imgXlen = poSrcDS->GetRasterXSize();
+	imgYlen = poSrcDS->GetRasterYSize();
+	bandNum = poSrcDS->GetRasterCount();
+
+	//创建输出图像，poDstDS初始化
+	poDstDS = GetGDALDriverManager()->GetDriverByName("GTiff")->Create
+		(dstPath, imgXlen, imgYlen, bandNum, GDT_Byte, NULL);
+
+	buffTmp1 = (GByte*)CPLMalloc(imgXlen*imgYlen * sizeof(GByte));
+	//读取红色通道缓存在buffTmp1中
+	poSrcDS->GetRasterBand(1)->RasterIO(GF_Read, 0, 0, imgXlen, imgYlen, buffTmp1,
+		imgXlen, imgYlen, GDT_Byte, 0, 0);
+
+	buffTmp2 = (GByte*)CPLMalloc(imgXlen*imgYlen * sizeof(GByte));
+	//读取绿色通道缓存在buffTmp2中
+	poSrcDS->GetRasterBand(2)->RasterIO(GF_Read, 0, 0, imgXlen, imgYlen, buffTmp2,
+		imgXlen, imgYlen, GDT_Byte, 0, 0);
+
+	buffTmp3 = (GByte*)CPLMalloc(imgXlen*imgYlen * sizeof(GByte));
+	//读取蓝色通道缓存在buffTmp3中
+	poSrcDS->GetRasterBand(3)->RasterIO(GF_Read, 0, 0, imgXlen, imgYlen, buffTmp3,
+		imgXlen, imgYlen, GDT_Byte, 0, 0);
+
+	//遍历整个图像，把某些像素置为0
+	for (j = 0; j < imgYlen; j++)
+		for (i = 0; i < imgXlen; i++)
+		{
+			if (buffTmp1[j*imgXlen + i] > 10 && buffTmp1[j*imgXlen + i] < 160
+				&& buffTmp2[j*imgXlen + i] > 100 && buffTmp2[j*imgXlen + i] < 220
+				&& buffTmp3[j*imgXlen + i] > 10 && buffTmp3[j*imgXlen + i] < 110)
+			{
+				buffTmp1[j*imgXlen + i] = (GByte)0;
+				buffTmp2[j*imgXlen + i] = (GByte)0;
+				buffTmp3[j*imgXlen + i] = (GByte)0;
+			}
+		}
+
+	poDstDS->GetRasterBand(1)->RasterIO(GF_Write, 0, 0, imgXlen, imgYlen, buffTmp1, imgXlen,
+		imgYlen, GDT_Byte, 0, 0);
+	poDstDS->GetRasterBand(2)->RasterIO(GF_Write, 0, 0, imgXlen, imgYlen, buffTmp2, imgXlen,
+		imgYlen, GDT_Byte, 0, 0);
+	poDstDS->GetRasterBand(3)->RasterIO(GF_Write, 0, 0, imgXlen, imgYlen, buffTmp3, imgXlen,
+		imgYlen, GDT_Byte, 0, 0);
+
+	CPLFree(buffTmp1);
+	CPLFree(buffTmp2);
+	CPLFree(buffTmp3);
+
+	GDALClose(poSrcDS);
+	GDALClose(poDstDS);
+
+	//输入图像
+	GDALDataset *poSrcDS1, *poSrcDS2;
+	//输出图像
+	GDALDataset *poDstDS1;
+	//图像的高度和宽度
+	int imgXlen1, imgYlen1, imgXlen2, imgYlen2;
+	//两个输入图片和一个输出图片
+	const char* srcPath1 = "BlackBackground.jpg";
+	const char* srcPath2 = "space.jpg";
+	const char* dstPath1 = "result.jpg";
+	//图像内存存储
+	GByte *buffTmp11, *buffTmp12, *buffTmp13, *buffTmp21, *buffTmp22, *buffTmp23;
+	int bandNum1, bandNum2;
+
+	GDALAllRegister();
+	poSrcDS1 = (GDALDataset*)GDALOpenShared(srcPath1, GA_ReadOnly);
+	poSrcDS2 = (GDALDataset*)GDALOpenShared(srcPath2, GA_ReadOnly);
+
+	imgXlen1 = poSrcDS1->GetRasterXSize();
+	imgYlen1 = poSrcDS1->GetRasterYSize();
+	bandNum1 = poSrcDS1->GetRasterCount();
+	imgXlen2 = poSrcDS2->GetRasterXSize();
+	imgYlen2 = poSrcDS2->GetRasterYSize();
+	bandNum2 = poSrcDS2->GetRasterCount();
+
+	poDstDS1 = GetGDALDriverManager()->GetDriverByName("GTiff")->Create
+	(dstPath1, imgXlen1, imgYlen1, bandNum1, GDT_Byte, NULL);
+
+	buffTmp11 = (GByte*)CPLMalloc(imgXlen1 * imgYlen1 * sizeof(GByte));
+	//读取黑色背景的superman图片的红色通道缓存在buffTmp11
+	poSrcDS1->GetRasterBand(1)->RasterIO(GF_Read, 0, 0, imgXlen1, imgYlen1, buffTmp11,
+		imgXlen1, imgYlen1, GDT_Byte, 0, 0);
+
+	buffTmp12 = (GByte*)CPLMalloc(imgXlen1 * imgYlen1 * sizeof(GByte));
+	//读取黑色背景的superman图片的绿色通道缓存在buffTmp12
+	poSrcDS1->GetRasterBand(2)->RasterIO(GF_Read, 0, 0, imgXlen1, imgYlen1, buffTmp12,
+		imgXlen1, imgYlen1, GDT_Byte, 0, 0);
+
+	buffTmp13 = (GByte*)CPLMalloc(imgXlen1 * imgYlen1 * sizeof(GByte));
+	//读取黑色背景的superman图片的蓝色通道缓存在buffTmp11
+	poSrcDS1->GetRasterBand(3)->RasterIO(GF_Read, 0, 0, imgXlen1, imgYlen1, buffTmp13,
+		imgXlen1, imgYlen1, GDT_Byte, 0, 0);
+
+	buffTmp21 = (GByte*)CPLMalloc(imgXlen2 * imgYlen2 * sizeof(GByte));
+	//读取space.jpg的红色通道缓存在buffTmp21
+	poSrcDS2->GetRasterBand(1)->RasterIO(GF_Read, 0, 0, imgXlen2, imgYlen2, buffTmp21,
+		imgXlen2, imgYlen2, GDT_Byte, 0, 0);
+
+	buffTmp22 = (GByte*)CPLMalloc(imgXlen2 * imgYlen2 * sizeof(GByte));
+	//读取space.jpg的绿色通道缓存在buffTmp22
+	poSrcDS2->GetRasterBand(2)->RasterIO(GF_Read, 0, 0, imgXlen2, imgYlen2, buffTmp22,
+		imgXlen2, imgYlen2, GDT_Byte, 0, 0);
+
+	buffTmp23 = (GByte*)CPLMalloc(imgXlen2 * imgYlen2 * sizeof(GByte));
+	//读取space.jpg的蓝色通道缓存在buffTmp23
+	poSrcDS2->GetRasterBand(3)->RasterIO(GF_Read, 0, 0, imgXlen2, imgYlen2, buffTmp23,
+		imgXlen2, imgYlen2, GDT_Byte, 0, 0);
+
+	for (j = 0; j < imgYlen1; j++)
+		for (i = 0; i < imgXlen1; i++)
+		{
+			if (buffTmp11[j * imgXlen1 + i] == 0 && buffTmp12[j * imgXlen1 + i] == 0 &&
+				buffTmp13[j * imgXlen1 + i] == 0)
+			{
+				buffTmp11[j * imgXlen1 + i] = buffTmp21[j * imgXlen1 + i];
+				buffTmp12[j * imgXlen1 + i] = buffTmp22[j * imgXlen1 + i];
+				buffTmp13[j * imgXlen1 + i] = buffTmp23[j * imgXlen1 + i];
+			}
+		}
+
+	poDstDS1->GetRasterBand(1)->RasterIO(GF_Write, 0, 0, imgXlen1, imgYlen1,
+		buffTmp11, imgXlen1, imgYlen1, GDT_Byte, 0, 0);
+	poDstDS1->GetRasterBand(2)->RasterIO(GF_Write, 0, 0, imgXlen1, imgYlen1,
+		buffTmp12, imgXlen1, imgYlen1, GDT_Byte, 0, 0);
+	poDstDS1->GetRasterBand(3)->RasterIO(GF_Write, 0, 0, imgXlen1, imgYlen1,
+		buffTmp13, imgXlen1, imgYlen1, GDT_Byte, 0, 0);
+
+	CPLFree(buffTmp11);
+	CPLFree(buffTmp12);
+	CPLFree(buffTmp13);
+	CPLFree(buffTmp21);
+	CPLFree(buffTmp22);
+	CPLFree(buffTmp23);
+
+	GDALClose(poSrcDS1);
+	GDALClose(poSrcDS2);
+	GDALClose(poDstDS1);
+
+	system("PAUSE");
+	return 0;
+}
