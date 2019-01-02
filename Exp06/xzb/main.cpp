@@ -4,60 +4,21 @@
 using namespace std;
 #include "./gdal/gdal_priv.h"
 #pragma comment(lib, "gdal_i.lib")
-
-
-int main()
-{
-    char* mulPath = "Mul_large.tif";
-    char* panPath = "Pan_large.tif";
-    char* outPath = "Out_large2.tif";
-    //Í¼ÏñµÄ¿í¶ÈºÍ¸ß¶È
-	int imgXlen, imgYlen;
-	//Í¼Ïñ²¨¶ÎÊı
-	int bandNum;
-    //ÊäÈëÍ¼Ïñ
-	GDALDataset* mulPic,*panPic;
-	//Êä³öÍ¼Ïñ
-	GDALDataset* outPic;
-	//Í¼ÏñÄÚ´æ´æ´¢
-	float *buffR,*buffG,*buffB,*buffP,*buffH,*buffS;
-	//×¢²áÇı¶¯
-	GDALAllRegister();
-
-	//´ò¿ªÍ¼Ïñ
-	mulPic = (GDALDataset*)GDALOpenShared(mulPath, GA_ReadOnly);
-	panPic = (GDALDataset*)GDALOpenShared(panPath, GA_ReadOnly);
-	//»ñÈ¡Í¼Ïñ¿í¶È£¬¸ß¶È£¬²¨¶ÎÊı
-	imgXlen = mulPic->GetRasterXSize();
-	imgYlen = mulPic->GetRasterYSize();
-	bandNum = mulPic->GetRasterCount();
-
-	outPic = GetGDALDriverManager()->GetDriverByName("GTiff")->Create(outPath,imgXlen,imgYlen,bandNum,GDT_Byte,NULL);
-  	//Êä³ö»ñÈ¡µÄ½á¹û
-	cout << "IMG  X Length:" << imgXlen << endl;
-	cout << "IMG  Y Length:" << imgYlen << endl;
-	cout << "Band Number:" << bandNum << endl;
-	int tx = 256,ty = imgYlen;
-	//¿ª±ÙÄÚ´æ¿Õ¼ä
-    buffR = (float *)CPLMalloc(tx * ty * sizeof(float));
-    buffG = (float *)CPLMalloc(tx * ty * sizeof(float));
-    buffB = (float *)CPLMalloc(tx * ty * sizeof(float));
-    buffP = (float *)CPLMalloc(tx * ty * sizeof(float));
-    buffH = (float *)CPLMalloc(tx * ty * sizeof(float));
-    buffS = (float *)CPLMalloc(tx * ty * sizeof(float));
-    /*
-    //·Ö¿é´¦Àí×ª»»
+void dividedByBlock(int tx,int ty,int imgXlen,GDALDataset* mulPic,GDALDataset* panPic,GDALDataset* outPic,float* buffR,float* buffG,float* buffB,float* buffP,float* buffH,float* buffS){
+    char* outPath = "Out_large.tif";
+    outPic = GetGDALDriverManager()->GetDriverByName("GTiff")->Create(outPath,imgXlen,imgYlen,bandNum,GDT_Byte,NULL);
+    //åˆ†å—å¤„ç†è½¬æ¢
 	for(int i = 0;i < imgXlen;i+=256){
         for(int j = 0 ; j < imgYlen;j+=256){
             if(i + ty > imgXlen || j + tx > imgYlen)
                 break;
-            printf("Í¼ÏñµÄx:%d  y:%d\n",i,j);
-            //¶ÁÈë»º´æ
+            printf("å›¾åƒçš„x:%d  y:%d\n",i,j);
+            //è¯»å…¥ç¼“å­˜
             mulPic->GetRasterBand(1)->RasterIO(GF_Read,i,j,tx,ty,buffR,tx,ty,GDT_Float32,0,0);
             mulPic->GetRasterBand(2)->RasterIO(GF_Read,i,j,tx,ty,buffG,tx,ty,GDT_Float32,0,0);
             mulPic->GetRasterBand(3)->RasterIO(GF_Read,i,j,tx,ty,buffB,tx,ty,GDT_Float32,0,0);
             panPic->GetRasterBand(1)->RasterIO(GF_Read,i,j,tx,ty,buffP,tx,ty,GDT_Float32,0,0);
-            //×ª»»´¦Àí
+            //è½¬æ¢å¤„ç†
             for(int k = 0;k < tx * ty ;k++){
                 buffH[k] = -sqrt(2.0f)/6.0f * buffR[k] - sqrt(2.0f)/6.0f*buffG[k] + sqrt(2.0f)/3.0f*buffB[k];
                 buffS[k] = 1.0f/sqrt(2.0f)*buffR[k] - 1/sqrt(2.0f)*buffG[k];
@@ -66,25 +27,31 @@ int main()
                 buffG[k] = buffP[k] - 1.0f/sqrt(2.0f) * buffH[k] - 1.0f/sqrt(2.0f) * buffS[k];
                 buffB[k] = buffP[k] + sqrt(2.0f) * buffH[k];
             }
-            //Ğ´ÈëĞÂÍ¼Ïñ
+            //å†™å…¥æ–°å›¾åƒ
             outPic->GetRasterBand(1)->RasterIO(GF_Write,i,j,tx,ty,buffR,tx,ty,GDT_Float32,0,0);
             outPic->GetRasterBand(2)->RasterIO(GF_Write,i,j,tx,ty,buffG,tx,ty,GDT_Float32,0,0);
             outPic->GetRasterBand(3)->RasterIO(GF_Write,i,j,tx,ty,buffB,tx,ty,GDT_Float32,0,0);
         }
-	}*/
-    //·ÖĞĞ´¦Àí  256ĞĞÒ»×é
+	}
+}
+//åˆ†è¡Œå¤„ç†
+void dividedByLine(int tx,int ty,int imgXlen, GDALDataset* mulPic,GDALDataset* panPic,GDALDataset* outPic,float* buffR,float* buffG,float* buffB,float* buffP,float* buffH,float* buffS){
+    char* outPath = "Out_large2.tif";
+    outPic = GetGDALDriverManager()->GetDriverByName("GTiff")->Create(outPath,imgXlen,imgYlen,bandNum,GDT_Byte,NULL);
+
+    //åˆ†è¡Œå¤„ç†  256è¡Œä¸€ç»„
     for(int i = 0 ; i < imgXlen;i+=256){
-        printf("Í¼ÏñµÄx:%d  y:%d\n",i,0);
+        printf("å›¾åƒçš„x:%d  y:%d\n",i,0);
         if(i + tx > imgXlen)
             break;
 
 
-        //¶ÁÈë»º´æ
+        //è¯»å…¥ç¼“å­˜
         mulPic->GetRasterBand(1)->RasterIO(GF_Read,i,0,tx,ty,buffR,tx,ty,GDT_Float32,0,0);
         mulPic->GetRasterBand(2)->RasterIO(GF_Read,i,0,tx,ty,buffG,tx,ty,GDT_Float32,0,0);
         mulPic->GetRasterBand(3)->RasterIO(GF_Read,i,0,tx,ty,buffB,tx,ty,GDT_Float32,0,0);
         panPic->GetRasterBand(1)->RasterIO(GF_Read,i,0,tx,ty,buffP,tx,ty,GDT_Float32,0,0);
-        //×ª»»´¦Àí
+        //è½¬æ¢å¤„ç†
         for(int k = 0;k < tx * ty ;k++){
             buffH[k] = -sqrt(2.0f)/6.0f * buffR[k] - sqrt(2.0f)/6.0f*buffG[k] + sqrt(2.0f)/3.0f*buffB[k];
             buffS[k] = 1.0f/sqrt(2.0f)*buffR[k] - 1/sqrt(2.0f)*buffG[k];
@@ -93,19 +60,67 @@ int main()
             buffG[k] = buffP[k] - 1.0f/sqrt(2.0f) * buffH[k] - 1.0f/sqrt(2.0f) * buffS[k];
             buffB[k] = buffP[k] + sqrt(2.0f) * buffH[k];
         }
-        //Ğ´ÈëĞÂÍ¼Ïñ
+        //å†™å…¥æ–°å›¾åƒ
         outPic->GetRasterBand(1)->RasterIO(GF_Write,i,0,tx,ty,buffR,tx,ty,GDT_Float32,0,0);
         outPic->GetRasterBand(2)->RasterIO(GF_Write,i,0,tx,ty,buffG,tx,ty,GDT_Float32,0,0);
         outPic->GetRasterBand(3)->RasterIO(GF_Write,i,0,tx,ty,buffB,tx,ty,GDT_Float32,0,0);
     }
-    //ÊÍ·Å»º´æ
+}
+int main()
+{
+    char* mulPath = "Mul_large.tif";
+    char* panPath = "Pan_large.tif";
+    //å›¾åƒçš„å®½åº¦å’Œé«˜åº¦
+	int imgXlen, imgYlen;
+	//å›¾åƒæ³¢æ®µæ•°
+	int bandNum;
+    //è¾“å…¥å›¾åƒ
+	GDALDataset* mulPic,*panPic;
+	//è¾“å‡ºå›¾åƒ
+	GDALDataset* outPic;
+	//å›¾åƒå†…å­˜å­˜å‚¨
+	float *buffR,*buffG,*buffB,*buffP,*buffH,*buffS;
+	//æ³¨å†Œé©±åŠ¨
+	GDALAllRegister();
+
+	//æ‰“å¼€å›¾åƒ
+	mulPic = (GDALDataset*)GDALOpenShared(mulPath, GA_ReadOnly);
+	panPic = (GDALDataset*)GDALOpenShared(panPath, GA_ReadOnly);
+	//è·å–å›¾åƒå®½åº¦ï¼Œé«˜åº¦ï¼Œæ³¢æ®µæ•°
+	imgXlen = mulPic->GetRasterXSize();
+	imgYlen = mulPic->GetRasterYSize();
+	bandNum = mulPic->GetRasterCount();
+
+	//è¾“å‡ºè·å–çš„ç»“æœ
+	cout << "IMG  X Length:" << imgXlen << endl;
+	cout << "IMG  Y Length:" << imgYlen << endl;
+	cout << "Band Number:" << bandNum << endl;
+	int tx = 256,ty = imgYlen;
+	//å¼€è¾Ÿå†…å­˜ç©ºé—´
+    buffR = (float *)CPLMalloc(tx * ty * sizeof(float));
+    buffG = (float *)CPLMalloc(tx * ty * sizeof(float));
+    buffB = (float *)CPLMalloc(tx * ty * sizeof(float));
+    buffP = (float *)CPLMalloc(tx * ty * sizeof(float));
+    buffH = (float *)CPLMalloc(tx * ty * sizeof(float));
+    buffS = (float *)CPLMalloc(tx * ty * sizeof(float));
+    cout << "you can choose the way to create the picture" << endl;
+    cout << "1ã€ divided by line" << endl;
+    cout << "2ã€ divided by block" << endl;
+    cin >> choose;
+    //é€‰æ‹©å¤„ç†æ–¹å¼
+    if(choose == 1){
+        dividedByLine(tx,ty,imgXlen,mulPic,panPic,outPic,buffR,buffG,buffB,buffP,buffH,buffS);
+    }else if(choose == 2){
+        dividedByBlock(tx,ty,imgXlen,mulPic,panPic,outPic,buffR,buffG,buffB,buffP,buffH,buffS);
+    }
+    //é‡Šæ”¾ç¼“å­˜
     CPLFree(buffR);
     CPLFree(buffG);
     CPLFree(buffB);
     CPLFree(buffP);
     CPLFree(buffH);
     CPLFree(buffS);
-    //¹Ø±ÕÊı¾İ¼¯
+    //å…³é—­æ•°æ®é›†
     GDALClose(panPic);
     GDALClose(mulPic);
     GDALClose(outPic);
