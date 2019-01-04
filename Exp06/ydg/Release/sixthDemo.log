@@ -1,0 +1,9 @@
+﻿  main.cpp
+    正在创建库 D:\vs\project\sofware\sixthDemo\Release\sixthDemo.lib 和对象 D:\vs\project\sofware\sixthDemo\Release\sixthDemo.exp
+  正在生成代码
+  1 of 450 functions ( 0.2%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  已完成代码的生成
+  sixthDemo.vcxproj -> D:\vs\project\sofware\sixthDemo\Release\sixthDemo.exe
+  sixthDemo.vcxproj -> D:\vs\project\sofware\sixthDemo\Release\sixthDemo.pdb (Full PDB)
